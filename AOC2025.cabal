@@ -43,7 +43,6 @@ common shared
 
   -- ghc-options: -threaded -rtsopts "-with-rtsopts=-N -T" -fplugin GHC.TypeLits.KnownNat.Solver -O2
   ghc-options:
-    -fllvm
     -O2
 
 benchmark main-bench
@@ -62,7 +61,6 @@ benchmark main-bench
     -threaded
     -rtsopts
     "-with-rtsopts=-N -T"
-    -fllvm
     -O2
 
 library
@@ -146,7 +144,6 @@ executable AOC2025
     -threaded
     -rtsopts
     "-with-rtsopts=-N -T"
-    -fllvm
     -O2
 
   hs-source-dirs:
