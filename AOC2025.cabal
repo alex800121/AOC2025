@@ -91,7 +91,7 @@ library
     Day7
     Day8
     Day9
-    Main
+    Solve
 
   -- Modules included in this library but not exported.
   other-modules:
@@ -108,6 +108,7 @@ executable AOC2025
   main-is: Main.hs
   -- Modules included in this executable, other than Main.
   other-modules:
+    Solve
     Day1
     Day10
     Day11
