@@ -2,14 +2,13 @@ module Day16 where
 
 import Paths_AOC2025 (getDataDir)
 
-day16 :: IO ()
+day16 :: IO (String, String)
 day16 = do
   -- input <- (readFile . (++ "/input/input16.txt") =<< getDataDir)
-  putStrLn
-    . ("day16a: " ++)
-    . show
-    $ ()
-  putStrLn
-    . ("day16b: " ++)
-    . show
-    $ ()
+  let !finalAnsa =
+        show $
+          ()
+  let !finalAnsb =
+        show $
+          ()
+  pure (finalAnsa, finalAnsb)

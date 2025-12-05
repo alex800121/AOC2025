@@ -8,30 +8,31 @@ import Paths_AOC2025 (getDataDir)
 type Index = (Int, Int)
 
 adjacent = [(x, y) | x <- [-1 .. 1], y <- [-1 .. 1], (x, y) /= (0, 0)]
+
 day4a a =
-    [ (i, '.')
-    | (i, '@') <- IA.assocs a
-    , let is = map (i +&) adjacent
-    , length (filter ((== Just '@') . (a IA.!?)) is) < 4
-    ]
+  [ (i, '.')
+  | (i, '@') <- IA.assocs a,
+    let is = map (i +&) adjacent,
+    length (filter ((== Just '@') . (a IA.!?)) is) < 4
+  ]
 
 day4b = go 0
   where
-    go acc x 
+    go acc x
       | null removed = acc
       | otherwise = go (acc + length removed) x'
       where
         removed = day4a x
         x' = x IA.// removed
-day4 :: IO ()
+
+day4 :: IO (String, String)
 day4 = do
   input <- drawArray @UArray . lines <$> (readFile . (++ "/input/input4.txt") =<< getDataDir)
-  putStrLn
-    . ("day4a: " ++)
-    . show
-    . length
-    $ day4a input
-  putStrLn
-    . ("day4b: " ++)
-    . show
-    $ day4b input
+  let !finalAnsa =
+        show
+          . length
+          $ day4a input
+  let !finalAnsb =
+        show $
+          day4b input
+  pure (finalAnsa, finalAnsb)
