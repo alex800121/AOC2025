@@ -6,20 +6,7 @@ import Day1
 import Day10
 import Day11
 import Day12
-import Day13
-import Day14
-import Day15
-import Day16
-import Day17
-import Day18
-import Day19
 import Day2
-import Day20
-import Day21
-import Day22
-import Day23
-import Day24
-import Day25
 import Day3
 import Day4
 import Day5
@@ -45,22 +32,9 @@ solveAll = do
             day9,
             day10,
             day11,
-            day12,
-            day13,
-            day14,
-            day15,
-            day16,
-            day17,
-            day18,
-            day19,
-            day20,
-            day21,
-            day22,
-            day23,
-            day24,
-            day25
+            day12
           ]
   mapM_ (\(i, a) -> forkIO (a >>= writeChan q . (i,))) days
-  getChanContents q >>= putStrLn . unlines . map f . sort . take 25
+  getChanContents q >>= putStrLn . unlines . map f . sort . take 12
   where
     f (i, (a, b)) = "day" ++ show i ++ "a: " ++ a ++ "\nday" ++ show i ++ "b: " ++ b
