@@ -1,66 +1,85 @@
+{-# LANGUAGE MultiWayIf #-}
+
 module Day8 where
 
-import Data.Bifunctor (Bifunctor (first))
+import Control.Arrow
+import Control.Monad.ST.Strict (ST, runST)
 import Data.Function (on)
-import Data.IntMap.Strict qualified as IM
-import Data.List (sort, sortBy, tails)
 import Data.List.Split (splitOn)
-import Data.Map.Strict qualified as Map
-import Data.Ord
+import Data.Vector.Algorithms.Radix
+import Data.Vector.Unboxed qualified as UV
+import Data.Vector.Unboxed.Mutable qualified as MUV
+import Data.Word (Word32, Word64)
+import Optics
 import Paths_AOC2025 (getDataDir)
 
+distSqr :: (Int, Int, Int) -> (Int, Int, Int) -> Int
 distSqr (a, b, c) (d, e, f) = (a - d) ^ 2 + (b - e) ^ 2 + (c - f) ^ 2
 
-connections l =
-  sortBy
-    (compare `on` uncurry distSqr)
-    [ (a, b)
-    | (a : xs) <- tails l
-    , b <- xs
-    ]
-
-connect l = go 0 0 0 Map.empty IM.empty conn
+readInput :: String -> (UV.Vector (Int, (Int, Int)), UV.Vector Int)
+readInput input = (ils, v)
   where
-    conn = connections l
-    go x y fresh acc im con n
-      | Map.size acc == length l && IM.size im == 1 = (undefined, x * y)
-      | n == 0 || null l = first (const im) $ go x y fresh acc im con (n - 1)
-      | Nothing <- ma
-      , Nothing <- mb =
-          go x y (fresh + 1) (Map.insert a fresh $ Map.insert b fresh acc) (IM.insert fresh [a, b] im) cs (n - 1)
-      | Just ia <- ma
-      , Nothing <- mb =
-          go xa xb fresh (Map.insert b ia acc) (IM.insertWith (<>) ia [b] im) cs (n - 1)
-      | Just ib <- mb
-      , Nothing <- ma =
-          go xa xb fresh (Map.insert a ib acc) (IM.insertWith (<>) ib [a] im) cs (n - 1)
-      | Just ia <- ma
-      , Just ib <- mb
-      , ia /= ib
-      , acc' <- Map.fromList (map (,ia) (im IM.! ib)) <> acc
-      , im' <- IM.insertWith (<>) ia (im IM.! ib) $ IM.delete ib im =
-          go xa xb fresh acc' im' cs (n - 1)
-      | otherwise = go x y fresh acc im cs (n - 1)
-      where
-        (a@(xa, _, _), b@(xb, _, _)) : cs = con
-        ma = acc Map.!? a
-        mb = acc Map.!? b
+    ls = map ((\[a, b, c] -> (a, b, c)) . map (read @Int) . splitOn ",") $ lines input
+    v = UV.fromList $ map (view _1) ls
+    ils =
+      UV.modify (sortBy (passes (0 :: Int)) (size (0 :: Int)) (\i e -> radix i (fst e)))
+        . UV.fromList
+        . f
+        $ zip [0 ..] ls
+    f ((a, b) : xs) = map (\(c, d) -> (distSqr b d, (a, c))) xs <> f xs
+    f _ = []
+
+find :: MUV.STVector s (Int, Word32) -> Int -> ST s (Int, Word32)
+find mother !n = do
+  (m, i) <- MUV.read mother n
+  if n == m
+    then pure (m, i)
+    else do
+      (!x, !j) <- find mother m
+      MUV.modify mother (first (const x)) n
+      pure (x, j)
+
+union :: Int -> MUV.STVector s (Int, Word32) -> Int -> Int -> ST s Int
+union !len mother a b = do
+  (ma, ia) <- find mother a
+  (mb, ib) <- find mother b
+  if
+    | ma == mb -> pure len
+    | ia < ib -> do
+        MUV.write mother ma (mb, 0)
+        MUV.modify mother (second (+ ia)) mb
+        pure (len - 1)
+    | otherwise -> do
+        MUV.write mother mb (ma, 0)
+        MUV.modify mother (second (+ ib)) ma
+        pure (len - 1)
+
+day8a :: Int -> UV.Vector (Int, (Int, Int)) -> ST s Word32
+day8a len xs = do
+  mother <- MUV.generate len (,1)
+  UV.mapM_ (uncurry (union maxBound mother) . snd) xs
+  sortBy (passes (0 :: Word32)) (size (0 :: Word32)) (\i e -> radix i (snd e)) mother
+  product . map snd <$> mapM (MUV.read mother . (len -)) [1, 2, 3]
+
+day8b v xs = do
+  mother <- MUV.generate len (,1)
+  let f n !len = do
+        let (_, (!a, !b)) = xs UV.! n
+        !len' <- union len mother a b
+        if len' == 1
+          then pure (v UV.! a * v UV.! b)
+          else f (n + 1) len'
+  f 0 len
+  where
+    len = UV.length v
 
 day8 :: IO (String, String)
 day8 = do
-  input <-
-    map ((\[a, b, c] -> (read @Int a, read @Int b, read @Int c)) . splitOn ",")
-      . lines
+  (ls, v) <-
+    readInput
       <$> (readFile . (++ "/input/input8.txt") =<< getDataDir)
   let !finalAnsa =
-        show
-          . product
-          . take 3
-          . sortBy (comparing Down)
-          . map length
-          . IM.elems
-          . fst
-          $ connect input 1000
+        show $ runST $ day8a (UV.length v) $ UV.take 1000 ls
   let !finalAnsb =
-        show $ snd $ connect input 1000
+        show $ runST $ day8b v ls
   pure (finalAnsa, finalAnsb)

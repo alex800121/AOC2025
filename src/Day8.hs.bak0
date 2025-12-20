@@ -1,0 +1,98 @@
+{-# LANGUAGE MultiWayIf #-}
+
+module Day8 where
+
+import Control.Arrow
+import Control.Monad (when)
+import Control.Monad.ST.Lazy (runST)
+import Data.Bifunctor (Bifunctor (first))
+import Data.Function (on)
+import Data.IntSet qualified as IS
+import Data.List (sortBy, sortOn, tails)
+import Data.List.Split (splitOn)
+import Data.Ord (Down (..))
+import Data.Vector qualified as SV
+import Data.Vector.Mutable qualified as MSV
+import Data.Vector.Unboxed qualified as UV
+import Data.Vector.Unboxed.Mutable qualified as MUV
+import Paths_AOC2025 (getDataDir)
+
+distSqr a = sum . zipWith (\a b -> (a - b) ^ 2) a
+
+readInput input = (ils, v)
+  where
+    ls = map (map (read @Int) . splitOn ",") $ lines input
+    v = UV.fromList $ map head ls
+    ils =
+      map (fst *** fst)
+        . sortBy (compare `on` uncurry distSqr . (snd *** snd))
+        . concatMap f
+        . tails
+        $ zip [0 ..] ls
+    f (x : xs) = map (x,) xs
+    f _ = []
+
+find mother n = do
+  let f acc n = do
+        m <- MUV.read mother n
+        if n == m then pure (acc, n) else f (n : acc) m
+  (cs, m) <- f [] n
+  mapM_ (\c -> MUV.write mother c m) cs
+  pure (length cs, m)
+
+union (mother, child) a b = do
+  (la, ma) <- find mother a
+  (lb, mb) <- find mother b
+  if
+    | ma == mb -> pure False
+    | la < lb -> do
+        MUV.write mother mb ma
+        cb <- MUV.read child mb
+        MUV.modify child (+ cb) ma
+        pure True
+    | otherwise -> do
+        MUV.write mother ma mb
+        ca <- MUV.read child ma
+        MUV.modify child (+ ca) mb
+        pure True
+
+day8a len xs = do
+  mother <- MUV.generate len id
+  child <- MUV.replicate len (1 :: Int)
+  mapM_ (uncurry (union (mother, child))) xs
+  mapM
+    ( \i -> do
+        mi <- MUV.read mother i
+        if mi == i then MUV.read child i else pure 0
+    )
+    [0 .. len - 1]
+
+day8b v xs = do
+  mother <- MUV.generate len id
+  child <- MUV.replicate len (1 :: Int)
+  let f n ((a, b) : xs) = do
+        x <- union (mother, child) a b
+        if
+          | x && n == 2 -> pure (v UV.! a * v UV.! b)
+          | x -> f (n - 1) xs
+          | otherwise -> f n xs
+  f len xs
+  where
+    len = UV.length v
+
+day8 :: IO (String, String)
+day8 = do
+  (ls, v) <-
+    readInput
+      <$> (readFile . (++ "/input/input8.txt") =<< getDataDir)
+  let !finalAnsa =
+        show
+          . product
+          . take 3
+          . sortOn Down
+          $ runST
+          $ day8a (UV.length v)
+          $ take 1000 ls
+  let !finalAnsb =
+        show $ runST $ day8b v ls
+  pure (finalAnsa, finalAnsb)

@@ -1,0 +1,48 @@
+module Day8 where
+
+import Data.Bifunctor (Bifunctor (first))
+import Data.DisjointSet qualified as DS
+import Data.Function (on)
+import Data.List (sort, sortBy, sortOn, tails)
+import Data.List.Split (splitOn)
+import Data.Ord (Down (..))
+import Data.Set qualified as Set
+import Paths_AOC2025 (getDataDir)
+
+distSqr a = sum . zipWith (\a b -> (a - b) ^ 2) a
+
+connections l =
+  sortBy
+    (compare `on` uncurry distSqr)
+    [ (a, b)
+    | (a : xs) <- tails l
+    , b <- xs
+    ]
+
+day8a = foldl' (\acc (a, b) -> DS.union a b acc)
+
+day8b acc ((a, b) : xs)
+  | DS.sets acc' == 1 = head a * head b
+  | otherwise = day8b acc' xs
+  where
+    acc' = DS.union a b acc
+
+day8 :: IO (String, String)
+day8 = do
+  input <-
+    map (map (read @Int) . splitOn ",")
+      . lines
+      <$> (readFile . (++ "/input/input8.txt") =<< getDataDir)
+  let init = DS.fromLists $ map (: []) input
+      conn = connections input
+  let !finalAnsa =
+        show
+          . product
+          . take 3
+          . sortOn Down
+          . map Set.size
+          . DS.toSets
+          $ day8a init (take 1000 conn)
+  let !finalAnsb =
+        show $ day8b init conn
+  pure (finalAnsa, finalAnsb)

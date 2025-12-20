@@ -31,8 +31,9 @@ common shared
     split,
     unordered-containers,
     optics,
-    finito,
-    holmes,
+    hashtables,
+    disjoint-containers,
+    vector-algorithms,
     vector
 
   default-extensions:
